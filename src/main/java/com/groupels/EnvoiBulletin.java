@@ -11,9 +11,11 @@ import javax.mail.internet.MimeMultipart;
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -44,10 +46,14 @@ public class EnvoiBulletin extends JFrame {
         add(topPanel, BorderLayout.NORTH);
         add(new JScrollPane(logArea), BorderLayout.CENTER);
 
-        sendButton.addActionListener(_ -> {
+        sendButton.addActionListener((e)  -> {
             sendButton.setEnabled(false);
             new Thread(() -> {
-                sendPDFs();
+                try {
+                    sendPDFs();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
                 SwingUtilities.invokeLater(() -> sendButton.setEnabled(true));
             }).start();
         });
@@ -85,10 +91,18 @@ public class EnvoiBulletin extends JFrame {
         return map;
     }
 
-    private void sendPDFs() {
+    private void sendPDFs() throws IOException {
         if(employeeMap != null && !employeeMap.isEmpty()){
-            List<Employe> employes = employeeMap.values().stream().toList();
+            List<Employe> employes = employeeMap.values().stream().collect(Collectors.toList());
             File bulletin;
+            File logFile= new File(System.getProperty("user.home") + "/Downloads/log.txt");
+            FileWriter log=new FileWriter(logFile,true);
+            // Define a French date format
+            SimpleDateFormat frenchDateFormat = new SimpleDateFormat("EEEE d MMMM yyyy hh:mm:ss", Locale.FRANCE);
+            // Format the date
+            String formattedDate;
+
+
             String email;
             for (int i = 0; i < employes.size(); i++) {
                 email = employes.get(i).getEmail();
@@ -100,7 +114,21 @@ public class EnvoiBulletin extends JFrame {
                         int finalI2 = i;
                         SwingUtilities.invokeLater(() -> {
                             progressBar.setValue(progress);
+
                             logArea.append(employes.get(finalI2).getNatricule() + ".pdf envoyé à " + employes.get(finalI2).getEmail() + "\n");
+                            if(!logFile.exists()) {
+                                try {
+                                    logFile.createNewFile();
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+
+                            try {
+                                log.write("Bulletin de "+employes.get(finalI2).getPrenom() +" "+employes.get(finalI2).getNom()+" envoyé le "+frenchDateFormat.format(new Date())+"\n");
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
                         });
                     }
                     else {
@@ -108,14 +136,26 @@ public class EnvoiBulletin extends JFrame {
                         SwingUtilities.invokeLater(() ->
                                 logArea.append("<<<Bulletin de " + employes.get(finalI1).getPrenom() + " introuvable dans "+System.getProperty("user.home") + "/Downloads\n")
                         );
+
+                        try {
+                            log.write("Warning: Bulletin de " + employes.get(finalI1).getPrenom() + " "+employes.get(finalI1).getNom()+" introuvable dans "+System.getProperty("user.home") + "/Downloads\n"+frenchDateFormat.format(new Date())+"\n");
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 } else {
                     int finalI = i;
                     SwingUtilities.invokeLater(() ->
-                            logArea.append("Erreur: Pas d'email trouvé pour " + employes.get(finalI).getEmail() + "\n")
+                            logArea.append("Erreur: Pas d'email trouvé pour " + employes.get(finalI).getPrenom()+" "+employes.get(finalI).getNom() + "\n")
                     );
+                    try {
+                        log.write("Warning: Pas d'email trouvé pour " + employes.get(finalI).getPrenom() + " "+employes.get(finalI).getNom()+" "+frenchDateFormat.format(new Date())+"\n");
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
+            log.close();
         }
     }
 

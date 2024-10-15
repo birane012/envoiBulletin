@@ -1,0 +1,12 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="envoiBulletin:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/envoiBulletin_jar</output-path>
+    <root id="archive" name="envoiBulletin.jar">
+      <element id="module-output" name="envoiBulletin" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/sun/mail/javax.mail/1.6.2/javax.mail-1.6.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/javax/mail/javax.mail-api/1.6.2/javax.mail-api-1.6.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/javax/activation/activation/1.1.1/activation-1.1.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/googlecode/json-simple/json-simple/1.1.1/json-simple-1.1.1.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
