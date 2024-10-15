@@ -1,3 +1,4 @@
+/*
 package com.groupels;
 
 import javax.activation.DataHandler;
@@ -73,9 +74,11 @@ public class PDFEmailSender_ extends JFrame {
     }
 
     private void sendPDFs() {
-       /* File[] pdfFiles =  new File(System.getProperty("user.home") + "/Downloads").
+       */
+/* File[] pdfFiles =  new File(System.getProperty("user.home") + "/Downloads").
                 listFiles((_, name) -> name.toLowerCase().endsWith(".pdf"));
-*/
+*//*
+
         employeeMap.forEach((matricule,employe)-> {
             if (employe.getEmail() != null) {
                 sendEmail(employe, new File(System.getProperty("user.home") + "/Downloads/" + matricule + ".pdf"));
@@ -86,7 +89,8 @@ public class PDFEmailSender_ extends JFrame {
 
         });
 
-        /*
+        */
+/*
         if (pdfFiles != null) {
             for (File pdf : pdfFiles) {
                 String matricule = pdf.getName().replace(".pdf", "");
@@ -100,7 +104,8 @@ public class PDFEmailSender_ extends JFrame {
             }
         } else {
             logArea.append("Aucun fichier PDF trouvé dans le dossier de téléchargement.\n");
-        }*/
+        }*//*
+
     }
 
     private String getEmailFromMatricule(String matricule) {
@@ -164,3 +169,4 @@ public class PDFEmailSender_ extends JFrame {
         SwingUtilities.invokeLater(() -> new PDFEmailSender_().setVisible(true));
     }
 }
+*/
