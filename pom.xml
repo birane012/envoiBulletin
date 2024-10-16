@@ -47,7 +47,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.groupels.EnvoiBulletin</mainClass>
+                            <mainClass>com.groupels.EnvoiBulletin_</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

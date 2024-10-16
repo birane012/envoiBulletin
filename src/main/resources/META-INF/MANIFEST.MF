@@ -1,3 +1,3 @@
 Manifest-Version: 1.0
-Main-Class: com.groupels.EnvoiBulletin
+Main-Class: com.groupels.EnvoiBulletin_
 
