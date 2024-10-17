@@ -23,12 +23,12 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class EnvoiBulletin_ extends JFrame {
+public class EnvoiBulletin_old extends JFrame {
     private final JTextArea logArea;
     private Map<String, Employe> employeeMap;
     private final JProgressBar progressBar;
@@ -37,12 +37,8 @@ public class EnvoiBulletin_ extends JFrame {
     private JComboBox<String> moisComboBox;
     private JButton choisirCheminButton;
     private JButton envoyerButton;
-    private Map<String, String> moisMap;
-    private JSONObject config;
-    private JSONObject readConfig;
-    private FileWriter editConfig;
-    private FileWriter editLog;
-    public EnvoiBulletin_() {
+    Map<String, String> moisMap;
+    public EnvoiBulletin_old() {
         setTitle("Envoi des bulletins de salaire Groupe LS");
         setSize(600, 400);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -110,7 +106,7 @@ public class EnvoiBulletin_ extends JFrame {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)
-                cheminField.setText(fileChooser.getSelectedFile().getAbsolutePath().replace("\\","/"));
+                cheminField.setText(fileChooser.getSelectedFile().getAbsolutePath());
         });
 
         envoyerButton.addActionListener(e -> {
@@ -144,16 +140,12 @@ public class EnvoiBulletin_ extends JFrame {
     private Map<String, Employe> loadEmployeesFromJson() {
         Map<String, Employe> map = new HashMap<>();
         JSONParser parser = new JSONParser();
-        logArea.append("Veulliez cliquer sur le bouton **Envoyer les bulletins** ci-dessous pour effectuer l'envoi.\n\n");
+        logArea.append("Veulliez cliquer sur le bouton **Envoyer les bulletins** ci-dessous pour ffectuer l'envoi.\n\n");
 
         try (FileReader reader = new FileReader(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/config.json")) {
-            //Charger le fichier de config
-            readConfig = (JSONObject)parser.parse(reader);
-            //Reccuperer le chemin ou les bulletin son stockées et les parametres du serveur SMTP
-            config = (JSONObject) readConfig.get("config");
-            cheminField.setText((String) ((JSONObject) readConfig.get("config")).get("path"));
+            Object obj = parser.parse(reader);
+            JSONArray employeeList = (JSONArray) obj;
 
-            JSONArray employeeList = (JSONArray) readConfig.get("usersData");
             for (Object o : employeeList) {
                 JSONObject employee = (JSONObject) o;
                 String matricule=(String) employee.get("Matricule");
@@ -166,38 +158,21 @@ public class EnvoiBulletin_ extends JFrame {
                                 (String) employee.get("email")
                         )
                 );
+                System.out.println(map.get(matricule));
             }
         } catch (IOException | ParseException e) {
-            logArea.append("Erreur lors de la lecture du fichier config.json: " + e.getMessage() + "\n");
+            logArea.append("Erreur lors de la lecture du fichier employees.json: " + e.getMessage() + "\n");
         }
 
         return map;
     }
 
     private void sendPDFs() throws IOException {
-        //employeeMap=loadEmployeesFromJson();
-        if(!(cheminField.getText().isEmpty() || cheminField.getText()==null) && !cheminField.getText().equals((String)((JSONObject) readConfig.get("config")).get("path"))) {
-            ((JSONObject) readConfig.get("config")).put("path", cheminField.getText());
-            //Pour la modification du fichier de config
-            editConfig = new FileWriter(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/config.json", false);
-            editConfig.write(readConfig.toJSONString());
-            editConfig.flush();
-            editConfig.close();
-        }
-
         if(employeeMap != null && !employeeMap.isEmpty()){
             List<Employe> employes = new ArrayList<>(employeeMap.values());
             File employeDossier;
             File logFile= new File(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/log.txt");
-            if(!logFile.exists()) {
-                try {
-                    logFile.createNewFile();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-             editLog =new FileWriter(logFile,true);
+            FileWriter log=new FileWriter(logFile,true);
             // Define a French date format
             SimpleDateFormat frenchDateFormat = new SimpleDateFormat("EEEE d MMMM yyyy hh:mm:ss", Locale.FRANCE);
 
@@ -206,30 +181,32 @@ public class EnvoiBulletin_ extends JFrame {
             for (int i = 0; i < employes.size(); i++) {
                 email = employes.get(i).getEmail();
                 if (email != null) {
-                    employeDossier = new File((String)config.get("path") + "/" + employes.get(i).getNatricule());
+                    employeDossier = new File(System.getProperty("user.home") + "/Documents/bulletins/" + employes.get(i).getNatricule());
                     if(employeDossier.exists()){
                         int finalI3 = i;
                         //Nom du fichier=0001_202410 par exemple
                         File bulletinAenvoyer=Arrays.stream(employeDossier.listFiles()).filter(b -> b.getName().equals(employes.get(finalI3).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())+".pdf"))
                                 .collect(Collectors.toList()).get(0);
                         //Envoyer le mail a l'empoyer
-                        boolean envoiReussie=sendEmail(employes.get(i), bulletinAenvoyer);
+                        sendEmail(employes.get(i), bulletinAenvoyer);
                         //Calculer le ourcentage du progress indicateur
                         int progress = (i + 1) * 100 / employes.size();
                         int finalI2 = i;
                         SwingUtilities.invokeLater(() -> {
                             //Mettre a jour le ourcentage du progress indicateur
                             progressBar.setValue(progress);
-                            if(envoiReussie)
-                                logArea.append(employes.get(finalI3).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + ".pdf envoyé à " + employes.get(finalI2).getEmail() + "\n");
-                            else
-                                logArea.append("Verifier egalement que vous et bien connecter a internet.\n");
+
+                            logArea.append(employes.get(finalI2).getNatricule() + ".pdf envoyé à " + employes.get(finalI2).getEmail() + "\n");
+                            if(!logFile.exists()) {
+                                try {
+                                    logFile.createNewFile();
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
 
                             try {
-                                if(envoiReussie)
-                                    editLog.write("Bulletin de "+employes.get(finalI2).getPrenom() +" "+employes.get(finalI2).getNom()+" envoyé le "+frenchDateFormat.format(new Date())+"\n");
-                                else
-                                    editLog.write("Verifier egalement que vous étes et bien connecter a internet. "+frenchDateFormat.format(new Date())+"\n");
+                                log.write("Bulletin de "+employes.get(finalI2).getPrenom() +" "+employes.get(finalI2).getNom()+" envoyé le "+frenchDateFormat.format(new Date())+"\n");
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
@@ -238,11 +215,11 @@ public class EnvoiBulletin_ extends JFrame {
                     else {
                         int finalI1 = i;
                         SwingUtilities.invokeLater(() ->
-                                logArea.append("<<<Bulletin de " + employes.get(finalI1).getPrenom() + " introuvable dans "+(String)config.get("path")+"\n")
+                                logArea.append("<<<Bulletin de " + employes.get(finalI1).getPrenom() + " introuvable dans "+System.getProperty("user.home") + "/Downloads\n")
                         );
 
                         try {
-                            editLog.write("Warning: Bulletin de " + employes.get(finalI1).getPrenom() + " "+employes.get(finalI1).getNom()+" introuvable dans "+(String)config.get("path")+" "+frenchDateFormat.format(new Date())+"\n");
+                            log.write("Warning: Bulletin de " + employes.get(finalI1).getPrenom() + " "+employes.get(finalI1).getNom()+" introuvable dans "+System.getProperty("user.home") + "/Downloads\n"+frenchDateFormat.format(new Date())+"\n");
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -253,33 +230,36 @@ public class EnvoiBulletin_ extends JFrame {
                             logArea.append("Erreur: Pas d'email trouvé pour " + employes.get(finalI).getPrenom()+" "+employes.get(finalI).getNom() + "\n")
                     );
                     try {
-                        editLog.write("Warning: Pas d'email trouvé pour " + employes.get(finalI).getPrenom() + " "+employes.get(finalI).getNom()+" "+frenchDateFormat.format(new Date())+"\n");
+                        log.write("Warning: Pas d'email trouvé pour " + employes.get(finalI).getPrenom() + " "+employes.get(finalI).getNom()+" "+frenchDateFormat.format(new Date())+"\n");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
             }
-            //log.close();
+            log.close();
         }
     }
 
-    private boolean sendEmail(Employe employe, File attachment) {
+    private void sendEmail(Employe employe, File attachment) {
+        String host = "smtp.gmail.com";
+        String from = "seinotifs@gmail.com";
+        String password = "vioc amzw akpi kstn";
 
         Properties properties = System.getProperties();
         properties.put("mail.smtp.auth", "true");
-        properties.put("mail.smtp.starttls.enable", (String)config.get("EnableTTLS").toString());
-        properties.setProperty("mail.smtp.host", (String)config.get("smtpServer"));
-        properties.put("mail.smtp.port", config.get("smtpPort").toString());
+        properties.put("mail.smtp.starttls.enable", "true");
+        properties.setProperty("mail.smtp.host", host);
+        properties.put("mail.smtp.port", "587");
 
         Session session = Session.getInstance(properties, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication((String)config.get("senderMail"), (String)config.get("password"));
+                return new PasswordAuthentication(from, password);
             }
         });
 
         try {
             MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress((String)config.get("senderMail")));
+            message.setFrom(new InternetAddress(from));
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(employe.getEmail()));
             LocalDate date = LocalDate.now();
             message.setSubject("Votre bulletin du mois de "+ date.getMonth().name()+ " "+date.getYear());
@@ -287,7 +267,7 @@ public class EnvoiBulletin_ extends JFrame {
             BodyPart messageBodyPart = new MimeBodyPart();
             messageBodyPart.setText(
                     "Bonjour "+employe.getPrenom() + "\n\n"+
-                            "Veuillez trouver ci-joint votre bulletin de salaire de "+ date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear()+
+                            "Veuillez trouver ci-joint votre bulletin de salaire de "+ date.getMonth().name()+ " "+ date.getYear()+
                             "\n\nCordialement"
             );
 
@@ -306,15 +286,13 @@ public class EnvoiBulletin_ extends JFrame {
             message.setContent(multipart);
 
             Transport.send(message);
-            return true;
         } catch (MessagingException mex) {
             logArea.append("Erreur lors de l'envoi de l'email.\nVeulliez vous assurer que les bulletin des employés\nont tous étaient mis dans le dossier Téléchargements.\n");
-            return false;
         }
     }
 
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new EnvoiBulletin_().setVisible(true));
+        SwingUtilities.invokeLater(() -> new EnvoiBulletin_old().setVisible(true));
     }
 }
