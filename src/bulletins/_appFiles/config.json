@@ -1,0 +1,18 @@
+{
+  "usersData": [
+    {
+      "Prenom": "Birane",
+      "Matricule": "0011",
+      "Nom": "KEBE",
+      "email": "b.kebe@groupels.com"
+    }
+  ],
+  "config": {
+    "path": "C:/Users/Dell/data/_GroupeLS/djago/bulletins",
+    "password": "vioc amzw akpi kstn",
+    "smtpServer": "smtp.gmail.com",
+    "EnableTTLS": true,
+    "smtpPort": 587,
+    "senderMail": "seinotifs@gmail.com"
+  }
+}

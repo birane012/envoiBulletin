@@ -30,6 +30,11 @@
             <artifactId>json-simple</artifactId>
             <version>1.1.1</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.9.0</version>
+        </dependency>
 
         <!--La premiere lettre d'un string en majuscule-->
         <dependency>
@@ -53,7 +58,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.groupels.EnvoiBulletin_</mainClass>
+                            <mainClass>com.groupels.EnvoiBulletin</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
