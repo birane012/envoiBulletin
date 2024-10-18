@@ -263,7 +263,7 @@ public class EnvoiBulletin extends JFrame {
 
         Session session = Session.getInstance(properties, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication((String) emailConfig.get("senderMail"), (String) emailConfig.get("password"));
+                return new PasswordAuthentication((String) emailConfig.get("senderMail"), recursiveDecodeBase64((String) emailConfig.get("password"),3));
             }
         });
 
@@ -303,6 +303,16 @@ public class EnvoiBulletin extends JFrame {
             logArea.append("Erreur lors de l'envoi de l'email.\nVeulliez vous assurer que les bulletin des employés\nont tous étaient mis dans le dossier Téléchargements.\n");
             return false;
         }
+    }
+
+    // Fonction récursive pour décoder la chaîne de caractères encodée en base64
+    public static String recursiveDecodeBase64(String encodedString, int times) {
+        // Cas de base: si "times" est égal à 0, retourner la chaîne
+        if (times == 0) {
+            return encodedString;
+        }
+        // Appel récursif avec "times" décrémenté
+        return recursiveDecodeBase64(new String(Base64.getDecoder().decode(encodedString)), times - 1);
     }
 
 
