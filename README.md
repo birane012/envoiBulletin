@@ -21,3 +21,6 @@ Ce programme permet d'envoyer les bulletins de salaires des enployées stockés 
 
 **NB: Le fichier envoiBulletins.exe et le Dossier JRE doivent tjr etre dans le meme dossier pour s'assurer de l'exécutabilité du programme quelque soit le PC**
 
+********************************************************************************
+***Double ciquez sur le fichier envoiBulletins.exe pour demarrer l'appli***
+********************************************************************************
