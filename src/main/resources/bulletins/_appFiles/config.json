@@ -1,0 +1,98 @@
+{
+  "usersData": [
+    {
+		"Matricule": "0001",
+        "Prenom": "Octave",
+        "Nom": "KABORE",
+        "email": "k.Octave@groupels.com"
+    },
+	{
+		"Matricule": "0002",
+        "Prenom": "Dame",
+        "Nom": "DIOUF",
+        "email": "d.dame@groupels.com"
+    },
+	{
+		"Matricule": "0003",
+        "Prenom": "Armel",
+        "Nom": "POODA",
+        "email": "p.armel@groupels.com"
+    },
+	{
+		"Matricule": "0004",
+        "Prenom": "Claude",
+        "Nom": "COLY",
+        "email": "c.claude@groupels.com"
+    },
+	{
+		"Matricule": "0005",
+        "Prenom": "Daine",
+        "Nom": "HIEN",
+        "email": "h.diane@groupels.com"
+    },
+	{
+		"Matricule": "0006",
+        "Prenom": "Malick",
+        "Nom": "KEBE",
+        "email": "k.malick@groupels.com"
+    },
+	{
+		"Matricule": "0007",
+        "Prenom": "Jack Etienne",
+        "Nom": "NDIAYE",
+        "email": "n.jack@groupels.com"
+    },
+	{
+		"Matricule": "0008",
+        "Prenom": "Seynabou",
+        "Nom": "DIONE",
+        "email": "d.Seynabou@groupels.com"
+    },
+	{
+		"Matricule": "0009",
+        "Prenom": "Seynabou",
+        "Nom": "DIONE",
+        "email": "d.Seynabou@groupels.com"
+    },
+	{
+		"Matricule": "0010",
+        "Prenom": "Loique",
+        "Nom": "KABORE",
+        "email": "k.loique@groupels.com"
+    },
+	{
+		"Matricule": "0011",
+        "Prenom": "Birane",
+        "Nom": "KEBE",
+        "email": "b.kebe@groupels.com"
+    },
+	{
+		"Matricule": "0012",
+        "Prenom": "Atoumane",
+        "Nom": "FAYE",
+        "email": "f.atoumane@groupels.com"
+    },
+	{
+		"Matricule": "0013",
+        "Prenom": "Ousmane",
+        "Nom": "DIA",
+        "email": "d.ousmane@groupels.com"
+    },
+	{
+		"Matricule": "0014",
+        "Prenom": "Aissa",
+        "Nom": "DIALLO",
+        "email": "d.aissa@groupels.com"
+    }
+  ],
+  "config": {
+    "path": "C:/Users/Dell/data/_GroupeLS/djago/bulletins",
+    "password": "Mot de passe 3 fois encripter en base64",
+    "smtpServer": "ssl0.ovh.net",
+    "EnableTTLS": true,
+    "smtpPort": 587,
+    "senderMail": "b.kebe@groupels.com",
+	"emailObjet": "Votre bulletin du mois de #moisAnnee",
+	"emailBody": "Bonjour #prenom, \n\nVeuillez trouver ci-joint votre bulletin de salaire de #moisAnnee\n\nCordialement"
+  }
+}

@@ -1,6 +1,8 @@
 package com.groupels;
 
 import com.google.gson.GsonBuilder;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -36,28 +38,30 @@ public class EnvoiBulletin extends JFrame {
     private JButton choisirCheminButton;
     private JButton envoyerButton;
     private Map<String, String> moisMap;
-    private JSONObject emailConfig;
-    private JSONObject readedConfig;
+    private JSONObject readedJsonConfigFile;//config.json
+    private JSONObject config;//(config.json).config ->
     private FileWriter editConfig;
-    BufferedWriter traceWriter;
+    private BufferedWriter traceWriter;
+    private ButtonGroup origineGroup;
+    private String[] origineOptions;
 
     public EnvoiBulletin() {
+        //System.out.println(recursiveEncodeBase64("vioc amzw akpi kstn",3));
+        //System.out.println(recursiveDecodeBase64("Wkcxc2RsbDVRbWhpV0hBelNVZEdjbU5IYTJkaE0wNHdZbWM5UFE9PQ==",3));
         setTitle("Envoi des bulletins de salaire Groupe LS");
-        setSize(600, 400);
+        setSize(600, 450);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Création des nouveaux composants
+        // Création des composants existants
         cheminField = new JTextField(20);
         choisirCheminButton = new JButton("Choisir");
         anneeComboBox = new JComboBox<>();
         moisComboBox = new JComboBox<>(
-            new String[]{
-                "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-                "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-            }
+                new String[]{
+                        "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+                        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+                }
         );
-        // Récupperer le mois en cours et mettre la premiere lettre du nom du mois en Majuscule
-        // et le mettre comme mois par defaut.
         String moisLettre1Majuscule = LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE);
         moisComboBox.setSelectedItem(moisLettre1Majuscule.substring(0, 1).toUpperCase() + moisLettre1Majuscule.substring(1).toLowerCase());
         envoyerButton = new JButton("Envoyer les bulletins");
@@ -67,7 +71,7 @@ public class EnvoiBulletin extends JFrame {
         Stream.iterate(2019, n -> n + 1).limit(currentYear-2018).forEach(anneeComboBox::addItem);
         anneeComboBox.setSelectedItem(currentYear);
 
-        // Création du panneau pour les nouveaux champs
+        // Création du panneau pour les champs
         JPanel inputPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -90,6 +94,24 @@ public class EnvoiBulletin extends JFrame {
         gbc.gridx = 1;
         inputPanel.add(moisComboBox, gbc);
 
+        // Ajout du champ Origine avec "classé" sélectionné par défaut
+        gbc.gridx = 0; gbc.gridy = 3;
+        inputPanel.add(new JLabel("Origine:"), gbc);
+        gbc.gridx = 1;
+
+        JPanel originePanel = new JPanel();
+        origineGroup = new ButtonGroup();
+        origineOptions = new String[]{"Un pdf", "Un seul dossier", "Dossier par employé"};
+        for (String option : origineOptions) {
+            JRadioButton radioButton = new JRadioButton(option);
+            origineGroup.add(radioButton);
+            originePanel.add(radioButton);
+            if (option.equals(origineOptions[2])) {
+                radioButton.setSelected(true);
+            }
+        }
+        inputPanel.add(originePanel, gbc);
+
         // Configuration du reste de l'interface
         logArea = new JTextArea();
         logArea.setEditable(false);
@@ -99,7 +121,7 @@ public class EnvoiBulletin extends JFrame {
         setLayout(new BorderLayout());
         add(inputPanel, BorderLayout.NORTH);
         add(new JScrollPane(logArea), BorderLayout.CENTER);
-        
+
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(envoyerButton, BorderLayout.NORTH);
         bottomPanel.add(progressBar, BorderLayout.SOUTH);
@@ -150,6 +172,19 @@ public class EnvoiBulletin extends JFrame {
         moisMap.put("Octobre", "10");
         moisMap.put("Novembre", "11");
         moisMap.put("Décembre", "12");
+        //getEmployeBulletinUnPDF("salaries.pdf");
+        //System.out.println(getSelectedOrigine());
+    }
+
+    // Méthode pour obtenir la valeur sélectionnée de l'origine
+    private String getSelectedOrigine() {
+        for (Enumeration<AbstractButton> buttons = origineGroup.getElements(); buttons.hasMoreElements();) {
+            AbstractButton button = buttons.nextElement();
+            if (button.isSelected()) {
+                return button.getText();
+            }
+        }
+        return null;
     }
 
     private Map<String, Employe> loadEmployeesFromJson() {
@@ -159,12 +194,12 @@ public class EnvoiBulletin extends JFrame {
 
         try (FileReader reader = new FileReader(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/config.json")) {
             //Charger le fichier de config
-            readedConfig = (JSONObject)parser.parse(reader);
+            readedJsonConfigFile = (JSONObject)parser.parse(reader);
             //Reccuperer le chemin ou les bulletin son stockées et les parametres du serveur SMTP
-            emailConfig = (JSONObject) readedConfig.get("config");
-            cheminField.setText((String) ((JSONObject) readedConfig.get("config")).get("path"));
+            config = (JSONObject) readedJsonConfigFile.get("config");
+            cheminField.setText((String) ((JSONObject) readedJsonConfigFile.get("config")).get("path"));
 
-            JSONArray employeeList = (JSONArray) readedConfig.get("usersData");
+            JSONArray employeeList = (JSONArray) readedJsonConfigFile.get("usersData");
             for (Object o : employeeList) {
                 JSONObject employee = (JSONObject) o;
                 String matricule=(String) employee.get("Matricule");
@@ -187,56 +222,71 @@ public class EnvoiBulletin extends JFrame {
 
     private void sendPDFs() throws IOException {
         //employeeMap=loadEmployeesFromJson();
-        if(!(cheminField.getText().isEmpty() || cheminField.getText()==null) && !cheminField.getText().equals((String)((JSONObject) readedConfig.get("config")).get("path"))) {
-            ((JSONObject) readedConfig.get("config")).put("path", cheminField.getText());
+        if(!(cheminField.getText().isEmpty() || cheminField.getText()==null) && !cheminField.getText().equals((String)((JSONObject) readedJsonConfigFile.get("config")).get("path"))) {
+            ((JSONObject) readedJsonConfigFile.get("config")).put("path", cheminField.getText());
             //Charger le fichier config.json en mode lecture
             editConfig = new FileWriter(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/config.json", false);
             //Mettre a jour le fichier config.json avec un format lisible
-            new GsonBuilder().setPrettyPrinting().create().toJson(readedConfig, editConfig);
+            new GsonBuilder().setPrettyPrinting().create().toJson(readedJsonConfigFile, editConfig);
             editConfig.flush();
             editConfig.close();
         }
 
         if(employeeMap != null && !employeeMap.isEmpty()){
             List<Employe> employes = new ArrayList<>(employeeMap.values());
-            File employeDossier;
-
             // Define a French date format
             SimpleDateFormat frenchDateFormat = new SimpleDateFormat("EEEE d MMMM yyyy HH:mm:ss", Locale.FRANCE);
             String email;
+            boolean envoiReussie;
+            File employeDossier,bulletinAenvoyer;
+            Map<String, File> employeDepuisBulletinUnPDF = Map.of();
+
+            if(getSelectedOrigine().equals(origineOptions[0]))
+                employeDepuisBulletinUnPDF=getEmployeBulletinUnPDF("salaries.pdf");
+
+            int progressIndex = 0;
             for (int i = 0; i < employes.size(); i++) {
                 email = employes.get(i).getEmail();
                 if (email != null) {
-                    employeDossier = new File((String) emailConfig.get("path") + "/" + employes.get(i).getNatricule());
-                    if(employeDossier.exists()){
-                        //Nom du fichier=0001_202410 par exemple
-                        int finalI = i;
-                        File bulletinAenvoyer=Arrays.stream(employeDossier.listFiles()).filter(b -> b.getName().contains(employes.get(finalI).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
-                                .collect(Collectors.toList()).get(0);
+                    //Recupperer le bulletin du salarié à envoyé
+                    if(getSelectedOrigine().equals(origineOptions[2]))
+                        bulletinAenvoyer = getEmployeBulletinClassé(employes.get(i).getNatricule());
+                    else if(getSelectedOrigine().equals(origineOptions[0]))
+                        bulletinAenvoyer=employeDepuisBulletinUnPDF.get(employes.get(i).getNatricule());
+                    else
+                        bulletinAenvoyer = new File((String) config.get("path")+"/"+employes.get(i).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())+".pdf");
+
+                    if(bulletinAenvoyer !=null){
                         //Envoyer le mail a l'empoyer
-                        boolean envoiReussie=sendEmail(employes.get(i), bulletinAenvoyer);
+                        envoiReussie=sendEmail(employes.get(i), bulletinAenvoyer);
                         //Calculer le ourcentage du progress indicateur
                             //Mettre a jour le ourcentage du progress indicateur
-                            progressBar.setValue((i + 1) * 100 / employes.size());
-                            if(envoiReussie)
-                                logArea.append(employes.get(i).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + ".pdf envoyé à " + employes.get(i).getEmail() + "\n");
-                            else
-                                logArea.append("Verifier egalement que vous et bien connecter a internet.\n");
 
-                            try {
-                                if(envoiReussie)
-                                    traceWriter.append("Bulletin de "+employes.get(i).getPrenom() +" "+employes.get(i).getNom()+" envoyé le "+frenchDateFormat.format(new Date())+"\n");
-                                else
-                                    traceWriter.append("Verifier egalement que vous étes et bien connecter a internet. "+frenchDateFormat.format(new Date())+"\n");
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                    }
-                    else {
-                        logArea.append("<<<Bulletin de " + employes.get(i).getPrenom() + " introuvable dans "+(String) emailConfig.get("path")+"\n");
+                        if(envoiReussie) {
+                            int progress = (progressIndex + 1) * 100 / employes.size();
+                            progressIndex++;
+                            SwingUtilities.invokeLater(() -> {
+                                progressBar.setValue(progress);
+                            });
+                            logArea.append(employes.get(i).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + ".pdf envoyé à " + employes.get(i).getEmail() + "\n");
+                        }
+                        else
+                            logArea.append("Verifier egalement que vous êtes bien connecter a internet.\n");
 
                         try {
-                            traceWriter.append("Warning: Bulletin de " + employes.get(i).getPrenom() + " "+employes.get(i).getNom()+" introuvable dans "+(String) emailConfig.get("path")+" "+frenchDateFormat.format(new Date())+"\n");
+                            if(envoiReussie)
+                                traceWriter.append("Bulletin de "+employes.get(i).getPrenom() +" "+employes.get(i).getNom()+" envoyé le "+frenchDateFormat.format(new Date())+"\n");
+                            else
+                                traceWriter.append("Verifier egalement que vous êtes et bien connecter a internet. "+frenchDateFormat.format(new Date())+"\n");
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    else {
+                        logArea.append("<<<Bulletin de " + employes.get(i).getPrenom() + " introuvable dans "+(String) config.get("path")+"\n");
+
+                        try {
+                            traceWriter.append("Warning: Bulletin de " + employes.get(i).getPrenom() + " "+employes.get(i).getNom()+" introuvable dans "+(String) config.get("path")+" "+frenchDateFormat.format(new Date())+"\n");
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -253,26 +303,123 @@ public class EnvoiBulletin extends JFrame {
         }
     }
 
+    File getEmployeBulletinClassé(String matricule){
+        //Charger le dossier de l'employé
+        File bulletinAenvoyer = new File((String) config.get("path") + "/" + matricule);
+        if(bulletinAenvoyer.exists()) {
+            //Trouver le bulletin de l'employer a envoyer selon le matricule, l'annee et le mois comme suit:
+            //Nom du fichier=0001_202410 par exemple
+            bulletinAenvoyer = Arrays.stream(bulletinAenvoyer.listFiles()).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
+                    .collect(Collectors.toList()).get(0);
+        }
+        return bulletinAenvoyer;
+    }
+
+   /* File getEmployeBulletinUnSeulDossier(String matricule){
+        File employeBulletin = new File((String) config.get("path")+"/"+matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()));
+        if(employeBulletin.exists()) {
+            //Nom du fichier=0001_202410 par exemple
+            return employeBulletin;
+        }
+        return employeBulletin;
+    }*/
+
+    Map<String,File> getEmployeBulletinUnPDF(String salariesBulletinFile) { //nomFichier as param
+        File employesBulletin = new File((String) config.get("path")+"/"+salariesBulletinFile);
+        Map<String,File> employeBulletinAenvoyeMap = new HashMap<>();
+        if (employesBulletin.exists()) {
+            try (PDDocument document = PDDocument.load(employesBulletin)) {
+                //int pageCount = document.getNumberOfPages();
+                document.getPages().forEach(pdPage -> {
+                    PDDocument newDoc = new PDDocument();
+                    newDoc.addPage(pdPage);
+                    String fileName;
+                    String employeIDFromBulletin;
+                    try {
+                        // Extraire tout le texte du PDF
+                        employeIDFromBulletin = findEmployeIDFromBulletin(newDoc, "Matricule");
+                        fileName = (String) config.get("path")+"/" + employeIDFromBulletin +"/"+  employeIDFromBulletin +"_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + document.getPages().indexOf(pdPage) + ".pdf";
+                        //Nom du fichier=0001_202410 par exemple
+                        newDoc.save(fileName);
+                        //System.out.println(employeIDFromBulletin);
+                        newDoc.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e.getMessage());
+                    }
+                    employeBulletinAenvoyeMap.put(employeIDFromBulletin,new File(fileName));
+                });
+                return employeBulletinAenvoyeMap;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return employeBulletinAenvoyeMap;
+        }
+        return null;
+    }
+
+
+    //matriculeLibelle: Ce champs correspond au libelle de l'identifiant de l'employé:
+    //Exemple: "Maticule"
+    String findEmployeIDFromBulletin(PDDocument pdf, String matriculeLibelle) throws IOException {
+        String pdfText = new PDFTextStripper().getText(pdf);
+        // Diviser le texte extrait en lignes
+        String[] lines = pdfText.split("\\r?\\n");
+        String matriculeValue = null;
+
+        // Parcourir les lignes et chercher le mot "Matricule"
+        for (String line : lines) {
+            // Vérifier si la ligne contient "Matricule" ou "Matricule :"
+            if (line.contains(matriculeLibelle)) {
+                // Supprimer les espaces ou les caractères spéciaux supplémentaires
+                String cleanedLine = line.trim().replaceAll(matriculeLibelle+"\\s*:?\\s*", matriculeLibelle+" ");
+                // Diviser la ligne en mots
+                String[] words = cleanedLine.split("\\s+");
+                //System.out.println(Arrays.toString(words));
+                // Parcourir les mots pour trouver le mot qui suit "Matricule"
+                for (int i = 0; i < words.length; i++) {
+                    if (words[i].equals(matriculeLibelle)) {
+                        if (i + 1 < words.length) {
+                            // Le mot suivant après "Matricule"
+                            matriculeValue = words[i + 1];
+                            break;
+                        }
+                    }
+                }
+
+                // Stopper la recherche une fois le matricule trouvé
+                if (matriculeValue != null) {
+                    break;
+                }
+            }
+        }
+
+        /*if (matriculeValue == null) {
+            //System.out.println("Aucun matricule trouvé dans le fichier PDF.");
+        }*/
+        return matriculeValue;
+    }
+
+
     private boolean sendEmail(Employe employe, File attachment) {
 
         Properties properties = System.getProperties();
         properties.put("mail.smtp.auth", "true");
-        properties.put("mail.smtp.starttls.enable", (String) emailConfig.get("EnableTTLS").toString());
-        properties.setProperty("mail.smtp.host", (String) emailConfig.get("smtpServer"));
-        properties.put("mail.smtp.port", emailConfig.get("smtpPort").toString());
+        properties.put("mail.smtp.starttls.enable", (String) config.get("EnableTTLS").toString());
+        properties.setProperty("mail.smtp.host", (String) config.get("smtpServer"));
+        properties.put("mail.smtp.port", config.get("smtpPort").toString());
 
         Session session = Session.getInstance(properties, new Authenticator() {
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication((String) emailConfig.get("senderMail"), recursiveDecodeBase64((String) emailConfig.get("password"),3));
+            protected PasswordAuthentication getPasswordAuthentication(){
+                return new PasswordAuthentication((String) config.get("senderMail"), recursiveDecodeBase64((String) config.get("password"),3));
             }
         });
 
         try {
             MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress((String) emailConfig.get("senderMail")));
+            message.setFrom(new InternetAddress((String) config.get("senderMail")));
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(employe.getEmail()));
             LocalDate date = LocalDate.now();
-            message.setSubject(emailConfig.get("emailObjet").toString().replace("#moisAnnee",date.getMonth().name()+ " "+date.getYear()));
+            message.setSubject(config.get("emailObjet").toString().replace("#moisAnnee",date.getMonth().name()+ " "+date.getYear()));
 
 
             BodyPart messageBodyPart = new MimeBodyPart();
@@ -280,7 +427,7 @@ public class EnvoiBulletin extends JFrame {
                 /*    "Bonjour "+employe.getPrenom() + "\n\n"+
                             "Veuillez trouver ci-joint votre bulletin de salaire de "+ date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear()+
                             "\n\nCordialement";*/
-            ((String) emailConfig.get("emailBody")).replace("#prenom",employe.getPrenom()).replace("#moisAnnee",date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear())
+            ((String) config.get("emailBody")).replace("#prenom",employe.getPrenom()).replace("#moisAnnee",date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear())
             );
 
 
@@ -300,7 +447,7 @@ public class EnvoiBulletin extends JFrame {
             Transport.send(message);
             return true;
         } catch (MessagingException mex) {
-            logArea.append("Erreur lors de l'envoi de l'email.\nVeulliez vous assurer que les bulletin des employés\nont tous étaient mis dans le dossier Téléchargements.\n");
+            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nà bien été mis dans le dossier "+(String) config.get("path")+".\n");
             return false;
         }
     }
@@ -308,11 +455,18 @@ public class EnvoiBulletin extends JFrame {
     // Fonction récursive pour décoder la chaîne de caractères encodée en base64
     public static String recursiveDecodeBase64(String encodedString, int times) {
         // Cas de base: si "times" est égal à 0, retourner la chaîne
-        if (times == 0) {
+        if (times == 0)
             return encodedString;
-        }
         // Appel récursif avec "times" décrémenté
         return recursiveDecodeBase64(new String(Base64.getDecoder().decode(encodedString)), times - 1);
+    }
+
+    public static String recursiveEncodeBase64(String originalString, int times) {
+        // Cas de base: si "times" est égal à 0, retourner la chaîne d'origine
+        if (times == 0)
+            return originalString;
+        // Appel récursif avec "times" décrémenté
+        return recursiveEncodeBase64(Base64.getEncoder().encodeToString(originalString.getBytes()), times - 1);
     }
 
 
