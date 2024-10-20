@@ -20,6 +20,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
@@ -28,10 +30,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 public class EnvoiBulletin extends JFrame {
     private final JTextArea logArea;
     private Map<String, Employe> employeeMap;
-    private final JProgressBar progressBar;
+    private JProgressBar progressBar;
     private JTextField cheminField;
     private JComboBox<Integer> anneeComboBox;
     private JComboBox<String> moisComboBox;
@@ -41,13 +45,12 @@ public class EnvoiBulletin extends JFrame {
     private JSONObject readedJsonConfigFile;//config.json
     private JSONObject config;//(config.json).config ->
     private FileWriter editConfig;
+    private File logFile;
     private BufferedWriter traceWriter;
     private ButtonGroup origineGroup;
     private String[] origineOptions;
 
     public EnvoiBulletin() {
-        //System.out.println(recursiveEncodeBase64("vioc amzw akpi kstn",3));
-        //System.out.println(recursiveDecodeBase64("Wkcxc2RsbDVRbWhpV0hBelNVZEdjbU5IYTJkaE0wNHdZbWM5UFE9PQ==",3));
         setTitle("Envoi des bulletins de salaire Groupe LS");
         setSize(600, 450);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -130,7 +133,13 @@ public class EnvoiBulletin extends JFrame {
         // Configuration des actions des boutons
         choisirCheminButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            fileChooser.setFileSelectionMode(
+                    ! getSelectedOrigine().equals(origineOptions[0]) ?
+                            JFileChooser.DIRECTORIES_ONLY :
+                            JFileChooser.FILES_AND_DIRECTORIES
+            );
+            File dir = new File(cheminField.getText());
+            fileChooser.setCurrentDirectory(dir.isDirectory()? dir: dir.getParentFile());
             if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)
                 cheminField.setText(fileChooser.getSelectedFile().getAbsolutePath().replace("\\","/"));
         });
@@ -138,7 +147,6 @@ public class EnvoiBulletin extends JFrame {
         envoyerButton.addActionListener(e -> {
             envoyerButton.setEnabled(false);
                 try {
-                    File logFile= new File(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/log.txt");
                     if(!logFile.exists()) {
                         try {
                             logFile.createNewFile();
@@ -172,7 +180,8 @@ public class EnvoiBulletin extends JFrame {
         moisMap.put("Octobre", "10");
         moisMap.put("Novembre", "11");
         moisMap.put("Décembre", "12");
-        //getEmployeBulletinUnPDF("salaries.pdf");
+        logFile= new File(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/log.txt");
+        //getEmployeBulletinUnPDF();
         //System.out.println(getSelectedOrigine());
     }
 
@@ -239,39 +248,72 @@ public class EnvoiBulletin extends JFrame {
             String email;
             boolean envoiReussie;
             File employeDossier,bulletinAenvoyer;
-            Map<String, File> employeDepuisBulletinUnPDF = Map.of();
+            Map<String, File> employeBulletinDepuisUnPDF = Map.of();
 
-            if(getSelectedOrigine().equals(origineOptions[0]))
-                employeDepuisBulletinUnPDF=getEmployeBulletinUnPDF("salaries.pdf");
+            if(getSelectedOrigine().equals(origineOptions[0])) {
+                //Au cas ou le fichier PDF des salaires n'existe pas, getEmployesBulletinDepuisUnPDF
+                //declencher un IndexOutOfBoundsException et nous afficherons le message :
+                //"Fichier des bulletins : "+cheminField.getText()+" introuvable" dans le UI et le fichier log.txt
+                try {
+                    employeBulletinDepuisUnPDF = getEmployesBulletinDepuisUnPDF();
+                } catch (IndexOutOfBoundsException e) {
+                    //"Fichier des bulletins : "+cheminField.getText()+" introuvable"
+                    logArea.append(e.getMessage()+"\n");
+                    traceWriter.append(e.getMessage()+"\n");
+                }
+            }
 
             int progressIndex = 0;
+            //Ce boolean nous permettra de supprimer le PDF d'orignine si l'option choisie est **Un PDF**
+            boolean deleteOrignePDF=true;
             for (int i = 0; i < employes.size(); i++) {
                 email = employes.get(i).getEmail();
                 if (email != null) {
                     //Recupperer le bulletin du salarié à envoyé
-                    if(getSelectedOrigine().equals(origineOptions[2]))
-                        bulletinAenvoyer = getEmployeBulletinClassé(employes.get(i).getNatricule());
-                    else if(getSelectedOrigine().equals(origineOptions[0]))
-                        bulletinAenvoyer=employeDepuisBulletinUnPDF.get(employes.get(i).getNatricule());
-                    else
-                        bulletinAenvoyer = new File((String) config.get("path")+"/"+employes.get(i).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())+".pdf");
+                    try {
+                        if (getSelectedOrigine().equals(origineOptions[2]))
+                            bulletinAenvoyer = getEmployeBulletinClassé(employes.get(i).getNatricule());
+                        else if (getSelectedOrigine().equals(origineOptions[0]))
+                            bulletinAenvoyer = employeBulletinDepuisUnPDF.get(employes.get(i).getNatricule());
+                        else {
+                            int finalI = i;
+                            bulletinAenvoyer = Arrays.stream(new File(cheminField.getText()).listFiles()).filter(b -> b.getName().contains(employes.get(finalI).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
+                                    .collect(Collectors.toList()).get(0);
+                        }
+                    } catch (IndexOutOfBoundsException e) {
+                        bulletinAenvoyer=null;
+                    }
 
                     if(bulletinAenvoyer !=null){
                         //Envoyer le mail a l'empoyer
                         envoiReussie=sendEmail(employes.get(i), bulletinAenvoyer);
-                        //Calculer le ourcentage du progress indicateur
-                            //Mettre a jour le ourcentage du progress indicateur
 
                         if(envoiReussie) {
+                            //Calculer le ourcentage du progress indicateur
+                            //Mettre a jour le pourcentage du progress indicateur
                             int progress = (progressIndex + 1) * 100 / employes.size();
                             progressIndex++;
-                            SwingUtilities.invokeLater(() -> {
-                                progressBar.setValue(progress);
-                            });
+                            SwingUtilities.invokeLater(() -> progressBar.setValue(progress));
+
                             logArea.append(employes.get(i).getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + ".pdf envoyé à " + employes.get(i).getEmail() + "\n");
+
+                            //Si tous les bulletin sont dans un seul emplacement, les classer après l'envoi
+                           if(getSelectedOrigine().equals(origineOptions[1])) {
+                               //Créer le dossier de l'employé s'il n'existe pas. (cheminField.getText()/MatriculeEmployé)
+                               createFolderIfNotExists(cheminField.getText()+"/"+employes.get(i).getNatricule());
+                               //Déplacer le bulletin envoyé de cheminField.getText()/nomBulletin.pdf à cheminField.getText()/MatriculeEmployé/nomBulletin.pdf
+                               var employeFolder= new ArrayList<>(Arrays.asList(bulletinAenvoyer.getAbsolutePath().split("[/\\\\]")));
+                               employeFolder.add(employeFolder.size()-1,employes.get(i).getNatricule());
+                               String nouveauEmplacementDuBulletin = String.join("/", employeFolder);
+                               // Déplacer le fichier et le remplacer s'il existe déjà
+                               Files.move(Paths.get(bulletinAenvoyer.getAbsolutePath()), Paths.get(nouveauEmplacementDuBulletin),REPLACE_EXISTING);
+                           }
                         }
-                        else
+                        else {
                             logArea.append("Verifier egalement que vous êtes bien connecter a internet.\n");
+                            if(deleteOrignePDF)
+                                deleteOrignePDF=false;
+                        }
 
                         try {
                             if(envoiReussie)
@@ -283,10 +325,10 @@ public class EnvoiBulletin extends JFrame {
                         }
                     }
                     else {
-                        logArea.append("<<<Bulletin de " + employes.get(i).getPrenom() + " introuvable dans "+(String) config.get("path")+"\n");
+                        logArea.append("<<<Bulletin de " + employes.get(i).getPrenom() + " introuvable dans "+cheminField.getText()+"\n");
 
                         try {
-                            traceWriter.append("Warning: Bulletin de " + employes.get(i).getPrenom() + " "+employes.get(i).getNom()+" introuvable dans "+(String) config.get("path")+" "+frenchDateFormat.format(new Date())+"\n");
+                            traceWriter.append("Warning: Bulletin de " + employes.get(i).getPrenom() + " "+employes.get(i).getNom()+" introuvable dans "+cheminField.getText()+" "+frenchDateFormat.format(new Date())+"\n");
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -299,24 +341,34 @@ public class EnvoiBulletin extends JFrame {
                         throw new RuntimeException(e);
                     }
                 }
+
+                if(deleteOrignePDF)
+                    new File(cheminField.getText()).delete();
             }
         }
     }
 
-    File getEmployeBulletinClassé(String matricule){
+    private String getFileNameFromPath(String path) {
+        List<String> splitedPath = Arrays.asList(path.split("/"));
+        //System.out.println(splitedPath.get(splitedPath.size()-1));
+        return splitedPath.get(splitedPath.size()-1);
+    }
+
+    File getEmployeBulletinClassé(String matricule) throws IndexOutOfBoundsException {
         //Charger le dossier de l'employé
-        File bulletinAenvoyer = new File((String) config.get("path") + "/" + matricule);
+        File bulletinAenvoyer = new File(cheminField.getText() + "/" + matricule);
         if(bulletinAenvoyer.exists()) {
             //Trouver le bulletin de l'employer a envoyer selon le matricule, l'annee et le mois comme suit:
             //Nom du fichier=0001_202410 par exemple
-            bulletinAenvoyer = Arrays.stream(bulletinAenvoyer.listFiles()).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
-                    .collect(Collectors.toList()).get(0);
+                //Si les bullelins sont introuvables, un IndexOutOfBoundsException est
+                bulletinAenvoyer = Arrays.stream(bulletinAenvoyer.listFiles()).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
+                        .collect(Collectors.toList()).get(0);
         }
         return bulletinAenvoyer;
     }
 
    /* File getEmployeBulletinUnSeulDossier(String matricule){
-        File employeBulletin = new File((String) config.get("path")+"/"+matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()));
+        File employeBulletin = new File(cheminField.getText()+"/"+matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()));
         if(employeBulletin.exists()) {
             //Nom du fichier=0001_202410 par exemple
             return employeBulletin;
@@ -324,8 +376,8 @@ public class EnvoiBulletin extends JFrame {
         return employeBulletin;
     }*/
 
-    Map<String,File> getEmployeBulletinUnPDF(String salariesBulletinFile) { //nomFichier as param
-        File employesBulletin = new File((String) config.get("path")+"/"+salariesBulletinFile);
+    Map<String,File> getEmployesBulletinDepuisUnPDF() throws IndexOutOfBoundsException { //nomFichier as param
+        File employesBulletin = new File(cheminField.getText());
         Map<String,File> employeBulletinAenvoyeMap = new HashMap<>();
         if (employesBulletin.exists()) {
             try (PDDocument document = PDDocument.load(employesBulletin)) {
@@ -338,8 +390,9 @@ public class EnvoiBulletin extends JFrame {
                     try {
                         // Extraire tout le texte du PDF
                         employeIDFromBulletin = findEmployeIDFromBulletin(newDoc, "Matricule");
-                        fileName = (String) config.get("path")+"/" + employeIDFromBulletin +"/"+  employeIDFromBulletin +"_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + document.getPages().indexOf(pdPage) + ".pdf";
+                        // Vérifier si les répertoires parent existent, sinon les créer
                         //Nom du fichier=0001_202410 par exemple
+                        fileName = createFolderIfNotExists(employesBulletin.getParent()+"/" + employeIDFromBulletin) +"/"+  employeIDFromBulletin +"_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + document.getPages().indexOf(pdPage) + ".pdf";
                         newDoc.save(fileName);
                         //System.out.println(employeIDFromBulletin);
                         newDoc.close();
@@ -349,14 +402,19 @@ public class EnvoiBulletin extends JFrame {
                     employeBulletinAenvoyeMap.put(employeIDFromBulletin,new File(fileName));
                 });
                 return employeBulletinAenvoyeMap;
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException ignored) {
             }
             return employeBulletinAenvoyeMap;
         }
-        return null;
+        else
+            throw new IndexOutOfBoundsException("Fichier des bulletins : "+cheminField.getText()+" introuvable");
     }
 
+    private String createFolderIfNotExists(String cheminDossierAcreer) throws IOException {
+        if(! new File(cheminDossierAcreer).exists())
+            return Files.createDirectories(Paths.get(cheminDossierAcreer)).toString();
+        return cheminDossierAcreer;
+    }
 
     //matriculeLibelle: Ce champs correspond au libelle de l'identifiant de l'employé:
     //Exemple: "Maticule"
@@ -392,10 +450,6 @@ public class EnvoiBulletin extends JFrame {
                 }
             }
         }
-
-        /*if (matriculeValue == null) {
-            //System.out.println("Aucun matricule trouvé dans le fichier PDF.");
-        }*/
         return matriculeValue;
     }
 
@@ -404,7 +458,7 @@ public class EnvoiBulletin extends JFrame {
 
         Properties properties = System.getProperties();
         properties.put("mail.smtp.auth", "true");
-        properties.put("mail.smtp.starttls.enable", (String) config.get("EnableTTLS").toString());
+        properties.put("mail.smtp.starttls.enable", config.get("EnableTTLS").toString());
         properties.setProperty("mail.smtp.host", (String) config.get("smtpServer"));
         properties.put("mail.smtp.port", config.get("smtpPort").toString());
 
@@ -447,7 +501,7 @@ public class EnvoiBulletin extends JFrame {
             Transport.send(message);
             return true;
         } catch (MessagingException mex) {
-            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nà bien été mis dans le dossier "+(String) config.get("path")+".\n");
+            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nà bien été mis dans le dossier "+cheminField.getText()+".\n");
             return false;
         }
     }
