@@ -315,7 +315,7 @@ public class EnvoiBulletin extends JFrame {
             // Define a French date format
             String email;
             boolean succes;
-            File employeDossier,bulletinAenvoyer;
+            File bulletinAenvoyer;
 
             employeBulletinDepuisUnPDF = Map.of();
             if(Objects.equals(getSelectedOrigine(), origineOptions[0])) {
@@ -367,6 +367,7 @@ public class EnvoiBulletin extends JFrame {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void updateConfigFileIfChangesHappened() throws IOException {
         boolean cheminChanged = !(cheminField.getText().isEmpty() || cheminField.getText() == null) && !cheminField.getText().equals(((JSONObject) readedJsonConfigFile.get("config")).get("path"));
         boolean matriculeChanged = !(matriculeField.getText().isEmpty() || matriculeField.getText() == null) && !matriculeField.getText().equals(((JSONObject) readedJsonConfigFile.get("config")).get("matriculeLibelle"));
@@ -457,15 +458,6 @@ public class EnvoiBulletin extends JFrame {
         }
         return bulletinAenvoyer;
     }
-
-   /* File getEmployeBulletinUnSeulDossier(String matricule){
-        File employeBulletin = new File(cheminField.getText()+"/"+matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()));
-        if(employeBulletin.exists()) {
-            //Nom du fichier=0001_202410 par exemple
-            return employeBulletin;
-        }
-        return employeBulletin;
-    }*/
 
     Map<String,File> getEmployesBulletinDepuisUnPDF() throws IndexOutOfBoundsException { //nomFichier as param
         File employesBulletin = new File(cheminField.getText());
@@ -564,18 +556,11 @@ public class EnvoiBulletin extends JFrame {
             message.setFrom(new InternetAddress((String) config.get("senderMail")));
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(employe.getEmail()));
             LocalDate date = LocalDate.now();
+            //Objet du mail
             message.setSubject(config.get("emailObjet").toString().replace("#moisAnnee",date.getMonth().name()+ " "+date.getYear()));
-
-
             BodyPart messageBodyPart = new MimeBodyPart();
-            messageBodyPart.setText(
-                /*    "Bonjour "+employe.getPrenom() + "\n\n"+
-                            "Veuillez trouver ci-joint votre bulletin de salaire de "+ date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear()+
-                            "\n\nCordialement";*/
-                    ((String) config.get("emailBody")).replace("#prenom",employe.getPrenom()).replace("#moisAnnee",date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear())
-            );
-
-
+            ////Body du mail
+            messageBodyPart.setText(((String) config.get("emailBody")).replace("#prenom",employe.getPrenom()).replace("#moisAnnee",date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear()));
 
             Multipart multipart = new MimeMultipart();
             multipart.addBodyPart(messageBodyPart);
