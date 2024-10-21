@@ -57,7 +57,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.groupels.EnvoiBulletin</mainClass>
+                            <mainClass>com.groupels.Stable1</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

@@ -12,51 +12,53 @@ import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.activation.FileDataSource;
 import javax.mail.*;
-import javax.mail.internet.InternetAddress;
+        import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.swing.*;
-import java.awt.*;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+        import java.awt.*;
+        import java.io.*;
+        import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.*;
-import java.util.List;
+        import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 
-public class EnvoiBulletin extends JFrame {
+public class Stable1 extends JFrame {
     private final JTextArea logArea;
     private Map<String, Employe> employeeMap;
-    private Map<String, File> employeBulletinDepuisUnPDF;
-    private final JProgressBar progressBar;
-    private final JTextField cheminField;
-    private final JComboBox<Integer> anneeComboBox;
-    private final JComboBox<String> moisComboBox;
-    private final JButton envoyerButton;
-    private final Map<String, String> moisMap;
+    Map<String, File> employeBulletinDepuisUnPDF;
+    private JProgressBar progressBar;
+    private JTextField cheminField;
+    private JComboBox<Integer> anneeComboBox;
+    private JComboBox<String> moisComboBox;
+    private JButton choisirCheminButton;
+    private JButton envoyerButton;
+    private Map<String, String> moisMap;
     private JSONObject readedJsonConfigFile;//config.json
     private JSONObject config;//(config.json).config ->
+    private FileWriter editConfig;
     private File logFile;
     private BufferedWriter traceWriter;
-    private final ButtonGroup origineGroup;
-    private final String[] origineOptions;
-    private final JLabel matriculeLabel = new JLabel("Libellé Matricule: *");
-    private final JTextField matriculeField;
-    private final JComboBox<String> matriculeComboBox;
+    private ButtonGroup origineGroup;
+    private String[] origineOptions;
+    private JLabel matriculeLabel = new JLabel("Libellé Matricule: *");
+    private JTextField matriculeField;
+    private JComboBox<String> matriculeComboBox;
+    private JButton duplicataButton;
     private int progressIndex;
     private final SimpleDateFormat frenchDateFormat;
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
-    public EnvoiBulletin() throws FileNotFoundException {
+    public Stable1() throws FileNotFoundException {
         setTitle("Envoi des bulletins de salaire Groupe LS");
         setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -64,7 +66,7 @@ public class EnvoiBulletin extends JFrame {
         // Initialisation des composants
         cheminField = new JTextField(40);
 
-        JButton choisirCheminButton = new JButton("Choisir");
+        choisirCheminButton = new JButton("Choisir");
         anneeComboBox = new JComboBox<>();
         moisComboBox = new JComboBox<>(new String[]{"Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"});
         String moisLettre1Majuscule = LocalDate.now().getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE);
@@ -78,7 +80,7 @@ public class EnvoiBulletin extends JFrame {
         matriculeField = new JTextField(10);
         matriculeComboBox = new JComboBox<>();
 
-        JButton duplicataButton = new JButton("Duplicata");
+        duplicataButton = new JButton("Duplicata");
         envoyerButton = new JButton("Envoyer tous les bulletins");
 
         // Création du panneau principal avec un padding à gauche
@@ -170,7 +172,7 @@ public class EnvoiBulletin extends JFrame {
         choisirCheminButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileSelectionMode(
-                    !Objects.equals(getSelectedOrigine(), origineOptions[0]) ?
+                    ! getSelectedOrigine().equals(origineOptions[0]) ?
                             JFileChooser.DIRECTORIES_ONLY :
                             JFileChooser.FILES_AND_DIRECTORIES
             );
@@ -185,15 +187,15 @@ public class EnvoiBulletin extends JFrame {
             try {
                 traceWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/log.txt",true), StandardCharsets.UTF_8));
                 updateConfigFileIfChangesHappened();
-                if(Objects.equals(getSelectedOrigine(), origineOptions[0]) && employeBulletinDepuisUnPDF==null)
+                if(getSelectedOrigine().equals(origineOptions[0]) && employeBulletinDepuisUnPDF==null)
                     employeBulletinDepuisUnPDF = getEmployesBulletinDepuisUnPDF();
 
                 File bulletin=getEmployeBulletin((String)matriculeComboBox.getSelectedItem());
                 if(bulletin!=null)
-                    envoyerBulletinViaMailEtTracerCetteAction(employeeMap.get(Objects.requireNonNull(matriculeComboBox.getSelectedItem()).toString()),getEmployeBulletin((String) matriculeComboBox.getSelectedItem()),1);
+                    envoyerBulletinViaMailEtTracerCetteAction(employeeMap.get(matriculeComboBox.getSelectedItem()),getEmployeBulletin((String) matriculeComboBox.getSelectedItem()),1);
                 else {
-                    logArea.append("<<<Bulletin de " + employeeMap.get(Objects.requireNonNull(matriculeComboBox.getSelectedItem()).toString()).getPrenom() +" "+employeeMap.get(matriculeComboBox.getSelectedItem().toString()).getNom()+ " introuvable dans "+cheminField.getText()+"\n");
-                    traceWriter.append("Warning: Bulletin de ").append(employeeMap.get(matriculeComboBox.getSelectedItem().toString()).getPrenom()).append(" ").append(employeeMap.get(matriculeComboBox.getSelectedItem().toString()).getNom()).append(" introuvable dans ").append(cheminField.getText()).append(" ").append(frenchDateFormat.format(new Date())).append("\n");
+                    logArea.append("<<<Bulletin de " + employeeMap.get(matriculeComboBox.getSelectedItem()).getPrenom() +" "+employeeMap.get(matriculeComboBox.getSelectedItem()).getNom()+ " introuvable dans "+cheminField.getText()+"\n");
+                    traceWriter.append("Warning: Bulletin de " + employeeMap.get(matriculeComboBox.getSelectedItem()).getPrenom() + " "+employeeMap.get(matriculeComboBox.getSelectedItem()).getNom()+" introuvable dans "+cheminField.getText()+" "+frenchDateFormat.format(new Date())+"\n");
                     traceWriter.flush();
                     traceWriter.close();
                 }
@@ -232,7 +234,7 @@ public class EnvoiBulletin extends JFrame {
         //Map qui a tout matricle associe les information de l'employé
         employeeMap = loadEmployeesFromJson();
         //Ajouter les matricule au combobox Maticule
-        employeeMap.keySet().forEach(matriculeComboBox::addItem);
+        employeeMap.keySet().stream().forEach(matriculeComboBox::addItem);
 
         moisMap = new HashMap<>();
         moisMap.put("Janvier", "01");
@@ -256,7 +258,7 @@ public class EnvoiBulletin extends JFrame {
     }
 
     private void updateMatriculeFieldVisibility() {
-        boolean isUnPdfSelected = Objects.equals(getSelectedOrigine(), "Un pdf");
+        boolean isUnPdfSelected = getSelectedOrigine().equals("Un pdf");
         matriculeField.setVisible(isUnPdfSelected);
         matriculeLabel.setVisible(isUnPdfSelected);
         revalidate();
@@ -307,7 +309,6 @@ public class EnvoiBulletin extends JFrame {
         return map;
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     private void envoyerTousLesBulletins() throws IOException {
         updateConfigFileIfChangesHappened();
         if(employeeMap != null && !employeeMap.isEmpty()){
@@ -318,7 +319,7 @@ public class EnvoiBulletin extends JFrame {
             File employeDossier,bulletinAenvoyer;
 
             employeBulletinDepuisUnPDF = Map.of();
-            if(Objects.equals(getSelectedOrigine(), origineOptions[0])) {
+            if(getSelectedOrigine().equals(origineOptions[0])) {
                 //Au cas ou le fichier PDF des salaires n'existe pas, getEmployesBulletinDepuisUnPDF
                 //declencher un IndexOutOfBoundsException et nous afficherons le message :
                 //"Fichier des bulletins : "+cheminField.getText()+" introuvable" dans le UI et le fichier log.txt
@@ -327,7 +328,7 @@ public class EnvoiBulletin extends JFrame {
                 } catch (IndexOutOfBoundsException e) {
                     //"Fichier des bulletins : "+cheminField.getText()+" introuvable"
                     logArea.append(e.getMessage()+"\n");
-                    traceWriter.append(e.getMessage()).append("\n");
+                    traceWriter.append(e.getMessage()+"\n");
                 }
             }
 
@@ -347,7 +348,7 @@ public class EnvoiBulletin extends JFrame {
                     else {
                         logArea.append("<<<Bulletin de " + employes.get(i).getPrenom() + " introuvable dans "+cheminField.getText()+"\n");
                         try {
-                            traceWriter.append("Warning: Bulletin de ").append(employes.get(i).getPrenom()).append(" ").append(employes.get(i).getNom()).append(" introuvable dans ").append(cheminField.getText()).append(" ").append(frenchDateFormat.format(new Date())).append("\n");
+                            traceWriter.append("Warning: Bulletin de " + employes.get(i).getPrenom() + " "+employes.get(i).getNom()+" introuvable dans "+cheminField.getText()+" "+frenchDateFormat.format(new Date())+"\n");
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -355,7 +356,7 @@ public class EnvoiBulletin extends JFrame {
                 } else {
                     logArea.append("Erreur: Pas d'email trouvé pour " + employes.get(i).getPrenom()+" "+employes.get(i).getNom() + "\n");
                     try {
-                        traceWriter.append("Warning: Pas d'email trouvé pour ").append(employes.get(i).getPrenom()).append(" ").append(employes.get(i).getNom()).append(" ").append(frenchDateFormat.format(new Date())).append("\n");
+                        traceWriter.append("Warning: Pas d'email trouvé pour " + employes.get(i).getPrenom() + " "+employes.get(i).getNom()+" "+frenchDateFormat.format(new Date())+"\n");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -379,7 +380,7 @@ public class EnvoiBulletin extends JFrame {
 
         if(cheminChanged || matriculeChanged) {
             //Charger le fichier config.json en mode lecture
-            FileWriter editConfig = new FileWriter(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/config.json", false);
+            editConfig = new FileWriter(System.getProperty("user.home") + "/Documents/bulletins/_appFiles/config.json", false);
             //Mettre a jour le fichier config.json avec un format lisible
             new GsonBuilder().setPrettyPrinting().create().toJson(readedJsonConfigFile, editConfig);
             editConfig.flush();
@@ -401,7 +402,7 @@ public class EnvoiBulletin extends JFrame {
             logArea.append(employe.getNatricule() + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem()) + ".pdf envoyé à " + employe.getEmail() + "\n");
 
             //Si tous les bulletin sont dans un seul emplacement, les classer après l'envoi
-            if(Objects.equals(getSelectedOrigine(), origineOptions[1])) {
+            if(getSelectedOrigine().equals(origineOptions[1])) {
                 //Créer le dossier de l'employé s'il n'existe pas. (cheminField.getText()/MatriculeEmployé)
                 createFolderIfNotExists(cheminField.getText()+"/"+employe.getNatricule());
                 //Déplacer le bulletin envoyé de cheminField.getText()/nomBulletin.pdf à cheminField.getText()/MatriculeEmployé/nomBulletin.pdf
@@ -415,7 +416,7 @@ public class EnvoiBulletin extends JFrame {
         }
         else {
             logArea.append("Verifier egalement que vous êtes bien connecter a internet.\n");
-            traceWriter.append("Verifier egalement que vous êtes et bien connecter a internet. ").append(frenchDateFormat.format(new Date())).append("\n");
+            traceWriter.append("Verifier egalement que vous êtes et bien connecter a internet. "+frenchDateFormat.format(new Date())+"\n");
             return false;
         }
     }
@@ -424,13 +425,13 @@ public class EnvoiBulletin extends JFrame {
         File bulletinAenvoyer;
         //Recupperer le bulletin du salarié à envoyé
         try {
-            if (Objects.equals(getSelectedOrigine(), origineOptions[2]))
-                bulletinAenvoyer = getClassifiedEmployeBulletin(matricule);
-            else if (Objects.equals(getSelectedOrigine(), origineOptions[0])) {
+            if (getSelectedOrigine().equals(origineOptions[2]))
+                bulletinAenvoyer = getEmployeBulletinClassé(matricule);
+            else if (getSelectedOrigine().equals(origineOptions[0])) {
                 bulletinAenvoyer = employeBulletinDepuisUnPDF!=null? employeBulletinDepuisUnPDF.get(matricule): null;
             }
             else {
-                bulletinAenvoyer = Arrays.stream(Objects.requireNonNull(new File(cheminField.getText()).listFiles())).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
+                bulletinAenvoyer = Arrays.stream(new File(cheminField.getText()).listFiles()).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
                         .collect(Collectors.toList()).get(0);
             }
         } catch (IndexOutOfBoundsException | NullPointerException e) {
@@ -445,14 +446,14 @@ public class EnvoiBulletin extends JFrame {
         return splitedPath.get(splitedPath.size()-1);
     }
 
-    File getClassifiedEmployeBulletin(String matricule) throws IndexOutOfBoundsException {
+    File getEmployeBulletinClassé(String matricule) throws IndexOutOfBoundsException {
         //Charger le dossier de l'employé
         File bulletinAenvoyer = new File(cheminField.getText() + "/" + matricule);
         if(bulletinAenvoyer.exists()) {
             //Trouver le bulletin de l'employer a envoyer selon le matricule, l'annee et le mois comme suit:
             //Nom du fichier=0001_202410 par exemple
             //Si les bullelins sont introuvables, un IndexOutOfBoundsException est
-            bulletinAenvoyer = Arrays.stream(Objects.requireNonNull(bulletinAenvoyer.listFiles())).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
+            bulletinAenvoyer = Arrays.stream(bulletinAenvoyer.listFiles()).filter(b -> b.getName().contains(matricule + "_" + anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())))
                     .collect(Collectors.toList()).get(0);
         }
         return bulletinAenvoyer;
@@ -592,7 +593,8 @@ public class EnvoiBulletin extends JFrame {
             Transport.send(message);
             return true;
         } catch (MessagingException mex) {
-            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nse trouve bien dans le "+(!Objects.equals(getSelectedOrigine(), origineOptions[0]) ?"fichier ":"dossier ")+ cheminField.getText()+".\n");
+            //System.out.println(mex.getMessage());
+            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nse trouve bien dans le "+(!getSelectedOrigine().equals(origineOptions[0])?"fichier ":"dossier ")+ cheminField.getText()+".\n");
             return false;
         }
     }
@@ -619,7 +621,7 @@ public class EnvoiBulletin extends JFrame {
 
     public static void main(String[] args) {
         try {
-            new EnvoiBulletin().setVisible(true);
+            new Stable1().setVisible(true);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
