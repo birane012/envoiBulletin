@@ -32,7 +32,6 @@ import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-
 public class EnvoiBulletin extends JFrame {
     private final JTextArea logArea;
     private Map<String, Employe> employeeMap;
@@ -57,6 +56,7 @@ public class EnvoiBulletin extends JFrame {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public EnvoiBulletin() throws FileNotFoundException {
+        //System.out.println(recursiveDecodeBase64("VWpCNFZGRkVTbkpOYWxGM1RWUkpha2wzUFQwPQ==",3));
         setTitle("Envoi des bulletins de salaire Groupe LS");
         setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -369,10 +369,10 @@ public class EnvoiBulletin extends JFrame {
 
     @SuppressWarnings("unchecked")
     private void updateConfigFileIfChangesHappened() throws IOException {
-        boolean cheminChanged = !(cheminField.getText().isEmpty() || cheminField.getText() == null) && !cheminField.getText().equals(((JSONObject) readedJsonConfigFile.get("config")).get("path"));
+        boolean cheminChanged = !(cheminField.getText().isEmpty() || cheminField.getText() == null) && !cheminField.getText().equals(((JSONObject) readedJsonConfigFile.get("config")).get("path")) && !Objects.equals(getSelectedOrigine(),origineOptions[0]);
         boolean matriculeChanged = !(matriculeField.getText().isEmpty() || matriculeField.getText() == null) && !matriculeField.getText().equals(((JSONObject) readedJsonConfigFile.get("config")).get("matriculeLibelle"));
         //employeeMap=loadEmployeesFromJson();
-        if(cheminChanged)
+        if(cheminChanged && !Objects.equals(getSelectedOrigine(),origineOptions[0]))
             ((JSONObject) readedJsonConfigFile.get("config")).put("path", cheminField.getText());
 
         if(matriculeChanged)
@@ -415,7 +415,7 @@ public class EnvoiBulletin extends JFrame {
             return true;
         }
         else {
-            logArea.append("Verifier egalement que vous êtes bien connecter a internet.\n");
+            logArea.append("Verifier egalement que vous êtes bien connecter a internet.\n\n");
             traceWriter.append("Verifier egalement que vous êtes et bien connecter a internet. ").append(frenchDateFormat.format(new Date())).append("\n");
             return false;
         }
@@ -577,7 +577,7 @@ public class EnvoiBulletin extends JFrame {
             Transport.send(message);
             return true;
         } catch (MessagingException mex) {
-            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nse trouve bien dans le "+(!Objects.equals(getSelectedOrigine(), origineOptions[0]) ?"fichier ":"dossier ")+ cheminField.getText()+".\n");
+            logArea.append("Erreur lors de l'envoi du mail à "+employe.getEmail()+".\nVeulliez vous assurer que le bulletin de employés : "+employe.getPrenom()+" "+employe.getNom()+"\nse trouve bien dans le "+(Objects.equals(getSelectedOrigine(), origineOptions[0]) ? "fichier ":"dossier ")+ cheminField.getText()+".\n");
             return false;
         }
     }

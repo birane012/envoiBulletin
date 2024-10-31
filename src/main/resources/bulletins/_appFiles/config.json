@@ -88,11 +88,12 @@
   "config": {
     "path": "C:/Users/Dell/data/_GroupeLS/djago/bulletins",
     "password": "Mot de passe 3 fois encripter en base64",
-    "smtpServer": "ssl0.ovh.net",
+    "smtpServer": "smtp.office365.com",
     "EnableTTLS": true,
+    "emailBody": "Bonjour #prenom, \n\nVeuillez trouver ci-joint votre bulletin de salaire de #moisAnnee\n\nCordialement",
+    "matriculeLibelle": "Matricule",
+    "emailObjet": "Votre bulletin du mois de #moisAnnee",
     "smtpPort": 587,
-    "senderMail": "b.kebe@groupels.com",
-	"emailObjet": "Votre bulletin du mois de #moisAnnee",
-	"emailBody": "Bonjour #prenom, \n\nVeuillez trouver ci-joint votre bulletin de salaire de #moisAnnee\n\nCordialement"
+    "senderMail": "b.kebe@groupels.com"
   }
 }
