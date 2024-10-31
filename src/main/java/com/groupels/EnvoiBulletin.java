@@ -391,7 +391,6 @@ public class EnvoiBulletin extends JFrame {
     Boolean envoyerBulletinViaMailEtTracerCetteAction(Employe employe, File bulletinAenvoyer, int nombreEmployes) throws IOException {
         //Envoyer le mail a l'empoyer
         boolean envoiReussie=sendEmail(employe, bulletinAenvoyer);
-
         if(envoiReussie) {
             //Calculer le ourcentage du progress indicateur
             //Mettre a jour le pourcentage du progress indicateur
@@ -440,13 +439,7 @@ public class EnvoiBulletin extends JFrame {
         return bulletinAenvoyer;
     }
 
-    private String getFileNameFromPath(String path) {
-        List<String> splitedPath = Arrays.asList(path.split("/"));
-        //System.out.println(splitedPath.get(splitedPath.size()-1));
-        return splitedPath.get(splitedPath.size()-1);
-    }
-
-    File getClassifiedEmployeBulletin(String matricule) throws IndexOutOfBoundsException {
+    private File getClassifiedEmployeBulletin(String matricule) throws IndexOutOfBoundsException {
         //Charger le dossier de l'employé
         File bulletinAenvoyer = new File(cheminField.getText() + "/" + matricule);
         if(bulletinAenvoyer.exists()) {
@@ -497,6 +490,12 @@ public class EnvoiBulletin extends JFrame {
         if(! new File(cheminDossierAcreer).exists())
             return Files.createDirectories(Paths.get(cheminDossierAcreer)).toString();
         return cheminDossierAcreer;
+    }
+
+    private String getFileNameFromPath(String path) {
+        List<String> splitedPath = Arrays.asList(path.split("/"));
+        //System.out.println(splitedPath.get(splitedPath.size()-1));
+        return splitedPath.get(splitedPath.size()-1);
     }
 
     //matriculeLibelle: Ce champs correspond au libelle de l'identifiant de l'employé:
@@ -598,8 +597,6 @@ public class EnvoiBulletin extends JFrame {
         // Appel récursif avec "times" décrémenté
         return recursiveEncodeBase64(Base64.getEncoder().encodeToString(originalString.getBytes()), times - 1);
     }
-
-
 
 
     public static void main(String[] args) {
