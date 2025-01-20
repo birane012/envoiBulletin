@@ -189,7 +189,7 @@ public class EnvoiBulletin extends JFrame {
                     employeBulletinDepuisUnPDF = getEmployesBulletinDepuisUnPDF();
 
                 File bulletin=getEmployeBulletin((String)matriculeComboBox.getSelectedItem());
-                if(bulletin!=null)
+                if(bulletin != null)
                     envoyerBulletinViaMailEtTracerCetteAction(employeeMap.get(Objects.requireNonNull(matriculeComboBox.getSelectedItem()).toString()),getEmployeBulletin((String) matriculeComboBox.getSelectedItem()),1);
                 else {
                     logArea.append("<<<Bulletin de " + employeeMap.get(Objects.requireNonNull(matriculeComboBox.getSelectedItem()).toString()).getPrenom() +" "+employeeMap.get(matriculeComboBox.getSelectedItem().toString()).getNom()+ " introuvable dans "+cheminField.getText()+"\n");
@@ -554,12 +554,13 @@ public class EnvoiBulletin extends JFrame {
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress((String) config.get("senderMail")));
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(employe.getEmail()));
-            LocalDate date = LocalDate.now();
+            //LocalDate date = LocalDate.now();
+            //anneeComboBox.getSelectedItem() + moisMap.get((String) moisComboBox.getSelectedItem())
             //Objet du mail
-            message.setSubject(config.get("emailObjet").toString().replace("#moisAnnee",date.getMonth().name()+ " "+date.getYear()));
+            message.setSubject(config.get("emailObjet").toString().replace("#moisAnnee",(String) moisComboBox.getSelectedItem()+ " "+anneeComboBox.getSelectedItem()));
             BodyPart messageBodyPart = new MimeBodyPart();
             ////Body du mail
-            messageBodyPart.setText(((String) config.get("emailBody")).replace("#prenom",employe.getPrenom()).replace("#moisAnnee",date.getMonth().getDisplayName(TextStyle.FULL, Locale.FRANCE).toUpperCase()+ " "+ date.getYear()));
+            messageBodyPart.setText(((String) config.get("emailBody")).replace("#prenom",employe.getPrenom()).replace("#moisAnnee",(String) moisComboBox.getSelectedItem()+ " "+anneeComboBox.getSelectedItem()));
 
             Multipart multipart = new MimeMultipart();
             multipart.addBodyPart(messageBodyPart);
@@ -569,7 +570,6 @@ public class EnvoiBulletin extends JFrame {
             messageBodyPart.setDataHandler(new DataHandler(source));
             messageBodyPart.setFileName(attachment.getName());
             multipart.addBodyPart(messageBodyPart);
-
 
             message.setContent(multipart);
 

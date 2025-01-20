@@ -1,6 +1,6 @@
 Ce programme permet d'envoyer les bulletins de salaires des enployées stockés dans le config.json.
 
-1. Le dossier *bulletins_ ce dossier est a mettre dans Documents* doit etre renommé en *bulletins* et 	plac2 dans ~/Documents.
+1. Le dossier *bulletins_ ce dossier est a mettre dans Documents* doit etre renommé en *bulletins* et 	placé dans ~/Documents.
 
 2. Le chemin vers le dossier contenant les bulletins peut etre renseigné depuis l'application
    Ou directement dans le fichier ~/Documents/bulletins/_appFiles/config.json
